@@ -1,4 +1,5 @@
 import java.text.ParseException;
+import java.util.Scanner;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -16,7 +17,7 @@ public class MainCreate {
 
 		options.addOption( "ja", "join_address", true, "The IP address of the machine running a Chord node. The Chord client will join this node’s ring.");
 		options.addOption( "jp", "join_port", true, "The port that an existing Chord node is bound to and listening on. The Chord client will join this node’s ring.");
-		
+
 		options.addRequiredOption( "ts", "time_stab", true, " The time in milliseconds between invocations of ‘stabilize’.");
 		options.addRequiredOption( "tff", "time_fix_fingers", true, " The time in milliseconds between invocations of ‘fix_fingers’.");
 		options.addRequiredOption( "tcp", "time_check_pred", true, " The time in milliseconds between invocations of ‘check_predecessor’.");
@@ -39,7 +40,7 @@ public class MainCreate {
 		int check_pred_time;
 		//Between 1 - 32 (this is m?) Nope.
 		int succ_count = 7;
-		
+
 		// validate that block-size has been set
 		if(line.hasOption( 'a' ))
 			binding_address = line.getOptionValue('a');
@@ -47,21 +48,21 @@ public class MainCreate {
 			binding_port = Integer.parseInt(line.getOptionValue('p'));
 		if(line.hasOption( 'r' ))
 			succ_count = Integer.parseInt(line.getOptionValue('r'));
-		
+
 		if(line.hasOption( "ja" ))
 			join_address = line.getOptionValue("ja");
 		if(line.hasOption( "jp" ))
 			join_port = Integer.parseInt(line.getOptionValue("jp"));
-		
+
 		if(line.hasOption( "ts" ))
 			stablize_time = Integer.parseInt(line.getOptionValue("ts"));
 		if(line.hasOption( "tff" ))
 			fix_fingers_time = Integer.parseInt(line.getOptionValue("tff"));
 		if(line.hasOption( "tcp" ))
 			check_pred_time = Integer.parseInt(line.getOptionValue("tcp"));
-		
+
 		Node localNode = new Node(binding_address, binding_port, succ_count, true);
-		
+
 		if(join_address == null) {
 			System.out.println("Creating ring");
 			localNode.create();
@@ -71,27 +72,39 @@ public class MainCreate {
 			localNode.join(new Node(join_address, join_port, succ_count, false));
 		}
 
-		
-		while(true) {
+		class StabilizeThread extends Thread{
+			private int delay;
+			private Node localnode;
 
-			try {
-				Thread.sleep(stablize_time);
-				System.out.println("stabilizing...");
-				localNode.stabilize();
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			public StabilizeThread(int delay, Node localnode) {
+				this.delay = delay;
+				this.localnode = localnode;
 			}
-		}
-		
-		//Start the stabilize thread
-/*		new Thread()
-		{
+
 			public void run() {
 
+				while(true) {
+					try {
+						Thread.sleep(delay);
+						//System.out.println("stabilizing...");
+						localnode.stabilize();
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			}
-		}.start();*/
-	}
+		}
 
+		new StabilizeThread(stablize_time, localNode).start();
+
+		Scanner sc = new Scanner(System.in); 
+		while(true) {
+			String command = sc.nextLine(); 
+			System.out.println("ID: " + localNode.getID() + 
+					" Pred: " + localNode.getPredecessor().getID() + 
+					" Succ: " + localNode.getSuccessor().getID());
+		}
+
+	}
 }

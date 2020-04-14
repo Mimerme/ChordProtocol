@@ -27,6 +27,8 @@ public class Node {
 		this.port = port;
 		this.succ_count = succ_count;
 
+		//System.out.println("New node of id " + this.id);
+		
 		if(local && local_count > 0) {
 			throw new Exception("Cannot have more than 1 local node");
 		}
@@ -57,7 +59,7 @@ public class Node {
 
 	//Start an RPC server only on the local node
 	private void startRPCServer() {
-		System.out.println("Starting the RPC server...");
+		//System.out.println("Starting the RPC server...");
 
 		new Thread()
 		{
@@ -116,6 +118,8 @@ public class Node {
 	public void setSuccessor(Node succ) throws Exception {
 		if(!local)
 			throw new Exception("Can't set the successor of a remote node");
+		
+		System.out.println("Set a new successor");
 		this.successor = succ;
 	}
 
@@ -128,10 +132,12 @@ public class Node {
 	public void setPredecessor(Node pred) throws Exception {
 		if(!local)
 			throw new Exception("Can't get the predecessor of a remote node");
+		
+		System.out.println("Set a new predecessor");
 		this.predecessor = pred;
 	}
 
-	public Node getPredecessor() throws Exception {
+	public synchronized Node getPredecessor() throws Exception {
 		if(local)
 			return predecessor;
 
@@ -150,17 +156,22 @@ public class Node {
 
 		Node x = successor.getPredecessor();
 		//Bruh the paper doesn't even specify the null check
-		if(x != null && (x.getID().compareTo(this.getID()) == 1) && (x.getID().compareTo(successor.getID())) == -1)
+		if(x != null && (((x.getID().compareTo(this.getID()) == 1) && (x.getID().compareTo(successor.getID())) == -1) || this.equals(successor)))
 			this.setSuccessor(x);
 		this.getSuccessor().notify_node(this);
 	}
 
-	public void notify_node(Node n_prime) throws Exception {
+	public synchronized void notify_node(Node n_prime) throws Exception {
 		if(local) {
+			//TODO: Check if correct
+			if(n_prime.equals(this))
+				return;
+			
 			if(this.getPredecessor() == null 
 					|| ((n_prime.getID().compareTo(this.getPredecessor().getID()) == 1)
-							&& (n_prime.getID().compareTo(this.getID()) == -1)))
+							&& (n_prime.getID().compareTo(this.getID()) == -1))) {
 				this.setPredecessor(n_prime);
+			}
 		}
 		else {
 			String response = sendRPC("notify " + n_prime.getIP() + " " + n_prime.getPort());
