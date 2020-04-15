@@ -71,6 +71,8 @@ public class MainCreate {
 			System.out.println("Joining ring");
 			localNode.join(new Node(join_address, join_port, succ_count, false));
 		}
+		
+		System.out.println("Local Node ID: " + localNode.getID());
 
 		class StabilizeThread extends Thread{
 			private int delay;
@@ -87,6 +89,9 @@ public class MainCreate {
 					try {
 						Thread.sleep(delay);
 						//System.out.println("stabilizing...");
+						if(localnode.getPredecessor() == null && localnode.getSuccessor().equals(localnode))
+							continue;
+						
 						localnode.stabilize();
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
