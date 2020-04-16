@@ -52,6 +52,10 @@ public class Node {
 		finger[0] = this;
 		startRPCServer();
 	}
+	
+	public synchronized String getHash() {
+		return this.getID().toString(16);
+	}
 
 	public void join(Node n_prime) throws Exception {
 		if(!local)
@@ -59,7 +63,7 @@ public class Node {
 
 		predecessor = null;
 		//finger[0] = node;
-		setSuccessor(n_prime.find_successor(this));
+		setSuccessor(n_prime.find_successor(this.getHash()));
 		startRPCServer();
 	}
 
@@ -97,10 +101,12 @@ public class Node {
 							output.writeBytes("Ok.");
 						}
 						else if(splits[0].equals("find_succ")) {
-							String ip = splits[1];
-							int port = Integer.parseInt(splits[2]);
-							Node succ = find_successor(new Node(ip, port, succ_count, false));
+							String key = splits[1];
+							Node succ = find_successor(key);
 							output.writeBytes(succ.ip + " " + succ.port + "\n");
+						}
+						else if(splits[0].equals("succ")) {
+							output.writeBytes(getSuccessor().ip + " " + getSuccessor().port + "\n");
 						}
 
 						output.flush();
@@ -136,9 +142,13 @@ public class Node {
 	}
 
 	public Node getSuccessor() throws Exception {
-		if(!local)
-			throw new Exception("Can't get the successor of a remote node");
-		return this.finger[0];
+		if(local)
+			return this.finger[0];
+
+		String response = sendRPC("succ");
+		String[] split = response.split(" ");
+
+		return new Node(split[0], Integer.parseInt(split[1]), succ_count, false);
 	}
 
 	public void setPredecessor(Node pred) throws Exception {
@@ -195,29 +205,31 @@ public class Node {
 		}
 	}
 
-	public synchronized Node find_successor(Node node_id) throws Exception {
+	public synchronized Node find_successor(String hash_id) throws Exception {
 		
 		if(local) {
-			BigInteger id = node_id.getID();
+			BigInteger id = new BigInteger(hash_id, 16);
 			Node successor = this.getSuccessor();
-			if (id.compareTo(this.id) == 1 && (id.compareTo(successor.id) == -1 || id.compareTo(successor.id) == 0)) {
+			if ((id.compareTo(this.id) == 1 && (id.compareTo(successor.id) == -1 || id.compareTo(successor.id) == 0))) {
 				return successor;
 			}
 			else {
-				Node n_prime = closest_preceding_node(id);
+				//Node n_prime = closest_preceding_node(id);
 				
 				//TODO: not in spec, verify correctness
 				//if(this.getPredecessor() == null && this.getSuccessor().equals(this)) {
-				if(n_prime.equals(this)) {
+				//Intiail or statement to prevent StackOverFlow, second or statement to handle finding successors while looping around the ring
+				if(successor.equals(this) || (successor.getID().compareTo(this.getID()) == -1 && id.compareTo(successor.getSuccessor().getID()) == 1)) {
 					return successor;
 				}
 				
-				return successor.find_successor(node_id);
+				return successor.find_successor(hash_id);
 			}
 		}
 		else {
-			String res = sendRPC("find_succ " + node_id.getIP() + " " + node_id.getPort());
+			String res = sendRPC("find_succ " + hash_id);
 			String[] splits = res.split(" ");
+			System.out.println("find_suc res: " + res);
 			return new Node(splits[0], Integer.parseInt(splits[1]), succ_count, false);
 		}
 	}

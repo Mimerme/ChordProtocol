@@ -71,7 +71,7 @@ public class MainCreate {
 			System.out.println("Joining ring");
 			localNode.join(new Node(join_address, join_port, succ_count, false));
 		}
-		
+
 		System.out.println("Local Node ID: " + localNode.getID());
 
 		class StabilizeThread extends Thread{
@@ -91,7 +91,7 @@ public class MainCreate {
 						//System.out.println("stabilizing...");
 						if(localnode.getPredecessor() == null && localnode.getSuccessor().equals(localnode))
 							continue;
-						
+
 						localnode.stabilize();
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
@@ -106,9 +106,20 @@ public class MainCreate {
 		Scanner sc = new Scanner(System.in); 
 		while(true) {
 			String command = sc.nextLine(); 
-			System.out.println("ID: " + localNode.getID() + 
-					" Pred: " + localNode.getPredecessor().getID() + 
-					" Succ: " + localNode.getSuccessor().getID());
+			String[] splits = command.split(" ");
+
+			if(splits[0].equals("PrintStateTest")) {
+
+				System.out.println("Self " + localNode.getID());
+				System.out.println("Predecessor " + localNode.getPredecessor().getID());
+				System.out.println("Successor " + localNode.getSuccessor().getID());
+			}
+			else if(splits[0].equals("Lookup")) {
+				String hash = Utils.hash(splits[1]).toString(16);
+				System.out.println(splits[1] + " " + Utils.hash(splits[1]));
+				Node n = localNode.find_successor(hash);
+				System.out.println(n.getID() + " " + n.getIP() + " " + n.getPort());
+			}
 		}
 
 	}

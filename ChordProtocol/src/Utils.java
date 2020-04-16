@@ -21,6 +21,16 @@ public class Utils {
 		
 		return new BigInteger(1, hash);
 	}
+	
+	public static BigInteger hash(String value) throws NoSuchAlgorithmException {
+		//Compute the SHA-1 hash
+		MessageDigest digest = MessageDigest.getInstance("SHA-1");
+		digest.reset();
+
+		byte[] hash = digest.digest(value.getBytes());
+		
+		return new BigInteger(1, hash);
+	}
 
 	private static byte[] intToBytes(final int data) {
 		return new byte[] {
