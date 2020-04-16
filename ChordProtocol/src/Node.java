@@ -44,8 +44,12 @@ public class Node {
 		}
 	}
 
+	public boolean isLocal() {
+		return local;
+	}
+	
 	public void create() throws Exception {
-		if(!local)
+		if(!isLocal())
 			throw new Exception("Cannot create() on a remote node");
 
 		predecessor = null;
@@ -53,12 +57,12 @@ public class Node {
 		startRPCServer();
 	}
 	
-	public synchronized String getHash() {
+	public String getHash() {
 		return this.getID().toString(16);
 	}
 
 	public void join(Node n_prime) throws Exception {
-		if(!local)
+		if(!isLocal())
 			throw new Exception("Cannot join() on a remote node");
 
 		predecessor = null;
@@ -67,11 +71,15 @@ public class Node {
 		startRPCServer();
 	}
 
+	public Node[] getFingers() {
+		return finger;
+	}
+	
 	//Start an RPC server only on the local node
 	private void startRPCServer() {
 		//System.out.println("Starting the RPC server...");
 
-		new Thread()
+		Thread t = new Thread()
 		{
 			public void run() {
 				try {
@@ -106,7 +114,7 @@ public class Node {
 							output.writeBytes(succ.ip + " " + succ.port + "\n");
 						}
 						else if(splits[0].equals("succ")) {
-							output.writeBytes(getSuccessor().ip + " " + getSuccessor().port + "\n");
+							output.writeBytes(finger[0].ip + " " + finger[0].port + "\n");
 						}
 
 						output.flush();
@@ -118,7 +126,9 @@ public class Node {
 					e.printStackTrace();
 				}
 			}
-		}.start();
+		};
+		t.setName("RPC Thread");
+		t.start();
 	}
 
 	public BigInteger getID() {
@@ -133,8 +143,8 @@ public class Node {
 		return port;
 	}
 
-	public void setSuccessor(Node succ) throws Exception {
-		if(!local)
+	public synchronized void setSuccessor(Node succ) throws Exception {
+		if(!isLocal())
 			throw new Exception("Can't set the successor of a remote node");
 
 		System.out.println("Set a new successor -> " + succ.getID());
@@ -142,7 +152,7 @@ public class Node {
 	}
 
 	public Node getSuccessor() throws Exception {
-		if(local)
+		if(isLocal())
 			return this.finger[0];
 
 		String response = sendRPC("succ");
@@ -151,16 +161,16 @@ public class Node {
 		return new Node(split[0], Integer.parseInt(split[1]), succ_count, false);
 	}
 
-	public void setPredecessor(Node pred) throws Exception {
-		if(!local)
+	public synchronized void setPredecessor(Node pred) throws Exception {
+		if(!isLocal())
 			throw new Exception("Can't get the predecessor of a remote node");
 
 		System.out.println("Set a new predecessor -> " + pred.getID());
 		this.predecessor = pred;
 	}
 
-	public synchronized Node getPredecessor() throws Exception {
-		if(local)
+	public Node getPredecessor() throws Exception {
+		if(isLocal())
 			return predecessor;
 
 		String response = sendRPC("predecessor");
@@ -172,11 +182,11 @@ public class Node {
 		return new Node(split[0], Integer.parseInt(split[1]), succ_count, false);
 	}
 
-	public void stabilize() throws Exception {		
-		if(!local)
+	public void stabilize() throws Exception {
+		if(!isLocal())
 			throw new Exception("Can't stabilize a remote node");
 
-		Node x = finger[0].getPredecessor();
+		Node x = getSuccessor().getPredecessor();
 		//Bruh the paper doesn't even specify the null check
 		//TODO: Verify
 /*		if(x != null && 
@@ -184,13 +194,13 @@ public class Node {
 						|| this.equals(finger[0])))*/
 		if(x != null && 
 				(x.getID().compareTo(this.getID()) == 1) 
-						|| this.equals(finger[0]))
+						|| this.equals(getSuccessor()))
 			this.setSuccessor(x);
 		this.getSuccessor().notify_node(this);
 	}
 
-	public synchronized void notify_node(Node n_prime) throws Exception {
-		if(local) {
+	public void notify_node(Node n_prime) throws Exception {
+		if(isLocal()) {
 			//TODO: Verify
 /*			if(this.getPredecessor() == null 
 					|| ((n_prime.getID().compareTo(this.getPredecessor().getID()) == 1)
@@ -205,10 +215,12 @@ public class Node {
 		}
 	}
 
-	public synchronized Node find_successor(String hash_id) throws Exception {
-		
-		if(local) {
+	public Node find_successor(String hash_id) throws Exception {
+		if(isLocal()) {
+			//System.out.println("Trying to find " +  hash_id);
 			BigInteger id = new BigInteger(hash_id, 16);
+			//System.out.println("Trying to find " +  id);
+
 			Node successor = this.getSuccessor();
 			if ((id.compareTo(this.id) == 1 && (id.compareTo(successor.id) == -1 || id.compareTo(successor.id) == 0))) {
 				return successor;
@@ -218,7 +230,7 @@ public class Node {
 				
 				//TODO: not in spec, verify correctness
 				//if(this.getPredecessor() == null && this.getSuccessor().equals(this)) {
-				//Intiail or statement to prevent StackOverFlow, second or statement to handle finding successors while looping around the ring
+				//First OR statement to prevent StackOverFlow, second or statement to handle finding successors while looping around the ring
 				if(successor.equals(this) || (successor.getID().compareTo(this.getID()) == -1 && id.compareTo(successor.getSuccessor().getID()) == 1)) {
 					return successor;
 				}
@@ -229,20 +241,30 @@ public class Node {
 		else {
 			String res = sendRPC("find_succ " + hash_id);
 			String[] splits = res.split(" ");
-			System.out.println("find_suc res: " + res);
+			//System.out.println("find_suc res: " + res);
 			return new Node(splits[0], Integer.parseInt(splits[1]), succ_count, false);
 		}
 	}
 
-	public synchronized void fix_fingers() {
-		if(this.next_fix_finger > m)
-			this.next_fix_finger = 0;
-		//finger[this.next_fix_finger] 
+	public void fix_fingers() throws Exception {
 		this.next_fix_finger++;
+
+		if(this.next_fix_finger >= m)
+			this.next_fix_finger = 0;
+		
+		BigInteger power = new BigInteger("2").pow(this.next_fix_finger);
+		BigInteger max_nodes = new BigInteger("2").pow(m);
+		BigInteger target_id = this.getID()
+				.add(power);
+				//.mod(max_nodes);
+		//System.out.println("Fixing: " + this.next_fix_finger);
+		//System.out.println("Looking for: " + target_id);
+		finger[this.next_fix_finger] = find_successor(target_id.toString(16));
+		//System.out.println("fixed");
 	}
 	
-	public synchronized Node closest_preceding_node(BigInteger id) throws Exception {
-		if(!local)
+	public Node closest_preceding_node(BigInteger id) throws Exception {
+		if(!isLocal())
 			throw new Exception("Cannot call closest_preceding_node() on a remote node");
 		
 		for (int i = m - 1; i >= 0; i--) {
@@ -261,7 +283,7 @@ public class Node {
 	}
 
 	public String sendRPC(String command) throws Exception {
-		if(local)
+		if(isLocal())
 			throw new Exception("Cannot make an RPC call on a local node");
 
 		//System.out.println("Sending: " + command);

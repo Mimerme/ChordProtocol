@@ -35,7 +35,7 @@ public class MainCreate {
 		//Between 1 - 60000
 		int stablize_time = 0;
 		//Between 1 - 60000
-		int fix_fingers_time;
+		int fix_fingers_time = 0;
 		//Between 1 - 60000
 		int check_pred_time;
 		//Between 1 - 32 (this is m?) Nope.
@@ -81,18 +81,22 @@ public class MainCreate {
 			public StabilizeThread(int delay, Node localnode) {
 				this.delay = delay;
 				this.localnode = localnode;
+				this.setName("Stabilize Thread");
 			}
 
 			public void run() {
-
 				while(true) {
 					try {
 						Thread.sleep(delay);
-						//System.out.println("stabilizing...");
 						if(localnode.getPredecessor() == null && localnode.getSuccessor().equals(localnode))
 							continue;
 
+						//System.out.println("Stabilizing");
 						localnode.stabilize();
+						//System.out.println("Stabilizing done");
+						
+						//System.out.println("Updating fingers");
+						//System.out.println("Updating fingers done");
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -100,8 +104,36 @@ public class MainCreate {
 				}
 			}
 		}
+		class FixFingersThread extends Thread{
+			private int delay;
+			private Node localnode;
 
+			public FixFingersThread(int delay, Node localnode) {
+				this.delay = delay;
+				this.localnode = localnode;
+			}
+
+			public void run() {
+				while(true) {
+					try {
+						Thread.sleep(delay);
+						if(localnode.getPredecessor() == null)
+							continue;
+						
+						//System.out.println("Updating fingers");
+						localnode.fix_fingers();
+						//System.out.println("Updating fingers done");
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+		
+		
 		new StabilizeThread(stablize_time, localNode).start();
+		new FixFingersThread(fix_fingers_time, localNode).start();
 
 		Scanner sc = new Scanner(System.in); 
 		while(true) {
@@ -109,10 +141,22 @@ public class MainCreate {
 			String[] splits = command.split(" ");
 
 			if(splits[0].equals("PrintStateTest")) {
-
 				System.out.println("Self " + localNode.getID());
 				System.out.println("Predecessor " + localNode.getPredecessor().getID());
 				System.out.println("Successor " + localNode.getSuccessor().getID());
+			}
+			else if(splits[0].equals("PrintState")) {
+				System.out.println("Self " + localNode.getID());
+				Node[] fingers = localNode.getFingers();
+				for(int i = 0; i < fingers.length; i++) {
+					Node n = fingers[i];
+					if(n == null) {
+						System.out.println("Finger [" + (i + 1) + "] null");
+						continue;
+					}
+						
+					System.out.println("Finger [" + (i + 1) + "] " + n.getHash() + " " + n.getIP() + " " + n.getPort());
+				}
 			}
 			else if(splits[0].equals("Lookup")) {
 				String hash = Utils.hash(splits[1]).toString(16);
