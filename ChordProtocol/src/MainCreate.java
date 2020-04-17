@@ -1,4 +1,5 @@
 import java.text.ParseException;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 import org.apache.commons.cli.CommandLine;
@@ -95,7 +96,7 @@ public class MainCreate {
 						//System.out.println("Stabilizing");
 						localnode.stabilize();
 						//System.out.println("Stabilizing done");
-						
+
 						//System.out.println("Updating fingers");
 						//System.out.println("Updating fingers done");
 					} catch (Exception e) {
@@ -120,7 +121,7 @@ public class MainCreate {
 						Thread.sleep(delay);
 						if(localnode.getPredecessor() == null)
 							continue;
-						
+
 						//System.out.println("Updating fingers");
 						localnode.fix_fingers();
 						//System.out.println("Updating fingers done");
@@ -131,52 +132,57 @@ public class MainCreate {
 				}
 			}
 		}
-		
-		
+
+
 		new StabilizeThread(stablize_time, localNode).start();
 		new FixFingersThread(fix_fingers_time, localNode).start();
 
 		Scanner sc = new Scanner(System.in); 
-		while(true) {
-			String command = sc.nextLine(); 
-			String[] splits = command.split(" ");
+		try {
+			while(true) {
+				String command = sc.nextLine(); 
+				String[] splits = command.split(" ");
 
-			if(splits[0].equals("PrintStateTest")) {
-				System.out.println("Self " + localNode.getID());
-				System.out.println("Predecessor " + localNode.getPredecessor().getID());
-				System.out.println("Successor " + localNode.getSuccessor().getID());
-			}
-			else if(splits[0].equals("PrintState")) {
-				System.out.println("Self " + localNode.getHash());
-				
-				Node[] succs = localNode.succesors;
-				for(int i = 0; i < succs.length; i++) {
-					Node n = succs[i];
-					if(n == null) {
-						System.out.println("Successor [" + (i + 1) + "] null");
-						continue;
-					}
-						
-					System.out.println("Successor " + (i + 1) + "] " + n.getHash() + " " + n.getIP() + " " + n.getPort());
+				if(splits[0].equals("PrintStateTest")) {
+					System.out.println("Self " + localNode.getID());
+					System.out.println("Predecessor " + localNode.getPredecessor().getID());
+					System.out.println("Successor " + localNode.getSuccessor().getID());
 				}
-				
-				Node[] fingers = localNode.getFingers();
-				for(int i = 0; i < fingers.length; i++) {
-					Node n = fingers[i];
-					if(n == null) {
-						System.out.println("Finger [" + (i + 1) + "] null");
-						continue;
+				else if(splits[0].equals("PrintState")) {
+					System.out.println("Self " + localNode.getHash());
+
+					Node[] succs = localNode.succesors;
+					for(int i = 0; i < succs.length; i++) {
+						Node n = succs[i];
+						if(n == null) {
+							System.out.println("Successor [" + (i + 1) + "] null");
+							continue;
+						}
+
+						System.out.println("Successor " + (i + 1) + "] " + n.getHash() + " " + n.getIP() + " " + n.getPort());
 					}
-						
-					System.out.println("Finger [" + (i + 1) + "] " + n.getHash() + " " + n.getIP() + " " + n.getPort());
+
+					Node[] fingers = localNode.getFingers();
+					for(int i = 0; i < fingers.length; i++) {
+						Node n = fingers[i];
+						if(n == null) {
+							System.out.println("Finger [" + (i + 1) + "] null");
+							continue;
+						}
+
+						System.out.println("Finger [" + (i + 1) + "] " + n.getHash() + " " + n.getIP() + " " + n.getPort());
+					}
+				}
+				else if(splits[0].equals("Lookup")) {
+					String hash = Utils.hash(splits[1]).toString(16);
+					System.out.println(splits[1] + " " + hash);
+					Node n = localNode.find_successor(hash);
+					System.out.println(n.getHash() + " " + n.getIP() + " " + n.getPort());
 				}
 			}
-			else if(splits[0].equals("Lookup")) {
-				String hash = Utils.hash(splits[1]).toString(16);
-				System.out.println(splits[1] + " " + hash);
-				Node n = localNode.find_successor(hash);
-				System.out.println(n.getHash() + " " + n.getIP() + " " + n.getPort());
-			}
+		}
+		catch(NoSuchElementException e) {
+			System.exit(1);
 		}
 
 	}
