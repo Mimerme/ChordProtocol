@@ -25,14 +25,18 @@ public class Node {
 	public Node[] finger;
 	private int next_fix_finger = 0;
 	private Node predecessor;
-
+	
+	public Node[] succesors;
+	
+	
 	public Node(String ip, int port, int succ_count, boolean local) throws Exception {
 		this.id = Utils.hash(ip, port, succ_count);
 		this.ip = ip;
 		this.port = port;
 		this.succ_count = succ_count;
 		this.finger = new Node[m];
-
+		this.succesors = new Node[this.succ_count];
+		
 		//System.out.println("New node of id " + this.id);
 
 		if(local && local_count > 0) {
@@ -147,7 +151,7 @@ public class Node {
 		if(!isLocal())
 			throw new Exception("Can't set the successor of a remote node");
 
-		System.out.println("Set a new successor -> " + succ.getID());
+		//System.out.println("Set a new successor -> " + succ.getID());
 		this.finger[0] = succ;
 	}
 
@@ -165,7 +169,7 @@ public class Node {
 		if(!isLocal())
 			throw new Exception("Can't get the predecessor of a remote node");
 
-		System.out.println("Set a new predecessor -> " + pred.getID());
+		//System.out.println("Set a new predecessor -> " + pred.getID());
 		this.predecessor = pred;
 	}
 

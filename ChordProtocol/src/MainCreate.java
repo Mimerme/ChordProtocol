@@ -64,15 +64,15 @@ public class MainCreate {
 		Node localNode = new Node(binding_address, binding_port, succ_count, true);
 
 		if(join_address == null) {
-			System.out.println("Creating ring");
+			//System.out.println("Creating ring");
 			localNode.create();
 		}
 		else {
-			System.out.println("Joining ring");
+			//System.out.println("Joining ring");
 			localNode.join(new Node(join_address, join_port, succ_count, false));
 		}
 
-		System.out.println("Local Node ID: " + localNode.getID());
+		//System.out.println("Local Node ID: " + localNode.getID());
 
 		class StabilizeThread extends Thread{
 			private int delay;
@@ -146,7 +146,19 @@ public class MainCreate {
 				System.out.println("Successor " + localNode.getSuccessor().getID());
 			}
 			else if(splits[0].equals("PrintState")) {
-				System.out.println("Self " + localNode.getID());
+				System.out.println("Self " + localNode.getHash());
+				
+				Node[] succs = localNode.succesors;
+				for(int i = 0; i < succs.length; i++) {
+					Node n = succs[i];
+					if(n == null) {
+						System.out.println("Successor [" + (i + 1) + "] null");
+						continue;
+					}
+						
+					System.out.println("Successor " + (i + 1) + "] " + n.getHash() + " " + n.getIP() + " " + n.getPort());
+				}
+				
 				Node[] fingers = localNode.getFingers();
 				for(int i = 0; i < fingers.length; i++) {
 					Node n = fingers[i];
@@ -160,9 +172,9 @@ public class MainCreate {
 			}
 			else if(splits[0].equals("Lookup")) {
 				String hash = Utils.hash(splits[1]).toString(16);
-				System.out.println(splits[1] + " " + Utils.hash(splits[1]));
+				System.out.println(splits[1] + " " + hash);
 				Node n = localNode.find_successor(hash);
-				System.out.println(n.getID() + " " + n.getIP() + " " + n.getPort());
+				System.out.println(n.getHash() + " " + n.getIP() + " " + n.getPort());
 			}
 		}
 
